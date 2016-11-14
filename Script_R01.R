@@ -4,6 +4,7 @@ require(ggplot2)
 require(scales)
 require(reshape2)
 require(corrplot)
+setwd("C:/Users/aaron/OneDrive/Documents/Monash Data Science/Applied Data Analysis/A2/ADLA2")
 
 
 udf_utils_MultiPlot <- function(..., plotlist = NULL, file, cols = 1, layout = NULL) {
@@ -205,7 +206,14 @@ plot(dt_pca,type="lines")
 (dt_pca$sdev)^2
 dt_pca <- as.data.frame(dt_pca$x[,1:4])
 
-ggplot(dt_pca,aes(dt_pca$PC1,dt_pca$PC2)) + geom_point(aes(colour = dt_$quality)) + scale_colour_brewer(palette = "Set1",name = "Quality") + scale_y_continuous(name = "Priniciple Component 2") + scale_x_continuous(name = "Principle Component 1") + ggtitle("Wine Quality Labels in 2-Principle Components")
+ggplot(dt_pca, aes(dt_pca$PC1, dt_pca$PC2)) + geom_point(aes(colour = dt_$quality)) + scale_colour_brewer(palette = "Set1", name = "Quality") + scale_y_continuous(name = "Priniciple Component 2") + scale_x_continuous(name = "Principle Component 1") + ggtitle("Wine Quality Labels in 2-Principle Components")
+
+## Look at the histogram for good and bad with the principle component.
+dt_pca <- cbind(dt_pca, dt_[, ncol(dt_)])
+colnames(dt_pca)[ncol(dt_pca)] <- "Quality"
+
+
+ggplot(dt_pca,aes(dt_pca$PC1)) + geom_density(aes(fill = dt_pca$Quality), alpha = 0.1) + scale_fill_brewer(palette = "Set1" , name = "Quality") 
 
 ## Bivariate Visualisation
 # Have a look at variable correlations.
