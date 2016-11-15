@@ -4,7 +4,7 @@ require(ggplot2)
 require(scales)
 require(reshape2)
 require(corrplot)
-# setwd("C:/Users/aaron/OneDrive/Documents/Monash Data Science/Applied Data Analysis/A2/ADLA2")
+setwd("C:/Users/aaron/OneDrive/Documents/Monash Data Science/Applied Data Analysis/A2/ADLA2")
 
 
 udf_utils_MultiPlot <- function(..., plotlist = NULL, file, cols = 1, layout = NULL) {
@@ -71,6 +71,26 @@ str(dt_)
 # Let's look at the statistical summary.
 summary(dt_)
 
+udf_eda_MultBoxPlot <- function(numericDataFrame,ncol=11) {
+
+    ## Description : This function plots ggplot boxplots with free scales for a numeric dataframe. 
+    # Input : A dataframe with numeric values.
+    # Output : ggplot2 object.
+
+    require(reshape2)
+    require(ggplot2)
+    tmp__ <- numericDataFrame
+
+    tmp__[, "idx"] <- row.names(tmp__)
+    tmp__ <- melt(tmp__, id.vars = "idx")
+
+    p_ <- ggplot(data = tmp__,aes(factor(1),value)) + geom_boxplot() + facet_wrap(~ variable,scales = "free",ncol = ncol) + theme(axis.text.x=element_blank(),axis.title.x=element_blank(),axis.title.y=element_blank())
+
+    return(p_)
+}
+
+
+udf_eda_MultBoxPlot(dt_[,-ncol(dt_)])
 # Seems like there is quite a large disparity of scales, e.g. SO2 has mean of 137, whilst Cl- of 0.04.
 
 
@@ -78,7 +98,7 @@ summary(dt_)
 # Let's investigate our target variable. Given that it's a factor we will look at it's proportion.
 
 ## Quality
-ggplot(dt_,aes(dt_$quality)) + geom_bar(colour  = "black", aes(fill= ..count..)) + scale_fill_gradient(low = "green", high= "red") + scale_x_discrete(name = "Wine Quality") + scale_y_continuous(name = "Count",labels = scales::comma) + ggtitle("Proportion of Wine Quality In Training Set") + guides(fill=FALSE)
+ggplot(dt_,aes(dt_$quality)) + geom_bar() + scale_x_discrete(name = "Wine Quality") + scale_y_continuous(name = "Count",labels = scales::comma) + ggtitle("Proportion of Wine Quality In Training Set")
 
 
 
