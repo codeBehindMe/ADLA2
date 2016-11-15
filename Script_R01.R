@@ -4,7 +4,7 @@ require(ggplot2)
 require(scales)
 require(reshape2)
 require(corrplot)
-setwd("C:/Users/aaron/OneDrive/Documents/Monash Data Science/Applied Data Analysis/A2/ADLA2")
+# setwd("C:/Users/aaron/OneDrive/Documents/Monash Data Science/Applied Data Analysis/A2/ADLA2")
 
 
 udf_utils_MultiPlot <- function(..., plotlist = NULL, file, cols = 1, layout = NULL) {
@@ -213,10 +213,145 @@ dt_pca <- cbind(dt_pca, dt_[, ncol(dt_)])
 colnames(dt_pca)[ncol(dt_pca)] <- "Quality"
 
 
-ggplot(dt_pca,aes(dt_pca$PC1)) + geom_density(aes(fill = dt_pca$Quality), alpha = 0.1) + scale_fill_brewer(palette = "Set1" , name = "Quality") 
+ggplot(dt_pca,aes(dt_pca$PC1)) + geom_density(aes(fill = dt_pca$Quality), alpha = 0.1) + scale_fill_brewer(palette = "Set1" , name = "Quality")  + scale_x_continuous(name = "Principle Component 1") + scale_y_continuous("Observation Density") + ggtitle("Distribution of Quality on Principle Component 1")
 
 ## Bivariate Visualisation
 # Have a look at variable correlations.
 corrplot(cor(dt_[,-ncol(dt_)]))
+
+## Fixed acidity
+################
+
+# fixed acidity histogram.
+udf_eda_FeatTargetHist <- function(data=dt_,featName="fixed.acidity",targetName="quality",alpha = 0.5){
+    require(ggplot2)
+    
+    camelize <- function(x) {
+        
+        x <- gsub("\\."," ",x)
+        s <- strsplit(x, " ")[[1]]
+        paste(toupper(substring(s, 1,1)), substring(s, 2),
+              sep="", collapse=" ")
+    }
+    
+    tmp__ <- data[,c(featName,targetName)]
+    
+    plt_ <- ggplot(tmp__,aes(tmp__[,featName])) + geom_density(aes(fill = tmp__[,targetName]),alpha = alpha) + scale_fill_brewer(palette = "Set1", name = camelize(targetName)) + scale_x_continuous(name = camelize(featName)) + scale_y_continuous(name = "Observation Density") + ggtitle(paste0("Distribution of ",camelize(featName)," On ",camelize(targetName)))
+    
+    return(plt_)
+}
+
+udf_eda_FeatTargetBox <- function(data=dt_,featName="fixed.acidity",targetName="quality",alpha = 1){
+    require(ggplot2)
+    
+    camelize <- function(x) {
+        
+        x <- gsub("\\."," ",x)
+        s <- strsplit(x, " ")[[1]]
+        paste(toupper(substring(s, 1,1)), substring(s, 2),
+              sep="", collapse=" ")
+    }
+    
+    tmp__ <- data[,c(featName,targetName)]
+    
+    plt_ <- ggplot(tmp__,aes(tmp__[,targetName],tmp__[,featName])) + geom_boxplot(aes(fill = tmp__[,targetName]),alpha = alpha) + scale_x_discrete(name = camelize(targetName)) + scale_y_continuous(name = camelize(featName)) + scale_fill_brewer(palette = "Set1",name = camelize(targetName)) + ggtitle(paste0("Histogram of ",camelize(featName)," by ",camelize(targetName))) + coord_flip()
+    
+    return(plt_)
+}
+
+# udf_eda_FeatTargetHist(dt_,"fixed.acidity","quality")
+udf_utils_MultiPlot(udf_eda_FeatTargetBox(dt_,"fixed.acidity","quality"),udf_eda_FeatTargetHist(dt_,"fixed.acidity","quality"),cols = 1)
+
+udf_eda_CorrTargetScatter <- function(data=dt_,xData="fixed.acidity",yData="pH",targetName="quality",smooth=TRUE){
+    
+    require(ggplot2)
+    
+    camelize <- function(x) {
+        
+        x <- gsub("\\."," ",x)
+        s <- strsplit(x, " ")[[1]]
+        paste(toupper(substring(s, 1,1)), substring(s, 2),
+              sep="", collapse=" ")
+    }
+    
+    tmp__ <- data[,c(xData,yData,targetName)]
+    
+    plt_ <- ggplot(tmp__,aes(tmp__[,xData],tmp__[,yData],colour = tmp__[,targetName])) + geom_point(shape = 16,size =2 , alpha = 0.5) + scale_color_brewer(palette = "Set1",name = camelize(targetName)) + scale_x_continuous(name = camelize(xData)) + scale_y_continuous(name = camelize(yData)) + ggtitle(paste0(camelize(xData)," ~ ",camelize(yData)," by ",camelize(targetName)))
+    
+    if(smooth){
+        return(plt_ + geom_smooth(method="lm",se=FALSE))
+    }
+    else{
+        return(plt_)
+    }
+}
+
+
+
+udf_eda_CorrTargetScatter(dt_,"fixed.acidity","pH","quality",TRUE)
+
+
+## Volatile acidity
+udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "volatile.acidity"),udf_eda_FeatTargetHist(featName = "volatile.acidity"))
+udf_eda_CorrTargetScatter(xData = "volatile.acidity",yData = "citric.acid")
+
+
+## Citric acid
+udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "citric.acid"),udf_eda_FeatTargetHist(featName = "citric.acid"))
+udf_eda_CorrTargetScatter(xData = "citric.acid",yData = "fixed.acidity")
+
+
+## Residual sugar
+udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "residual.sugar"),udf_eda_FeatTargetHist(featName = "residual.sugar"))
+udf_utils_MultiPlot(udf_eda_CorrTargetScatter(xData = "residual.sugar",yData = "density"),udf_eda_CorrTargetScatter(xData = "residual.sugar",yData = "total.sulfur.dioxide"),udf_eda_CorrTargetScatter(xData = "residual.sugar",yData = "alcohol"))
+
+
+## Chlorides
+udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "chlorides"),udf_eda_FeatTargetHist(featName = "chlorides"))
+udf_utils_MultiPlot(udf_eda_CorrTargetScatter(xData = "chlorides",yData = "alcohol"),udf_eda_CorrTargetScatter(xData = "chlorides",yData = "density"))
+
+## Free sulfur dioxide
+udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "free.sulfur.dioxide"),udf_eda_FeatTargetHist(featName = "free.sulfur.dioxide"))
+udf_utils_MultiPlot(udf_eda_CorrTargetScatter(xData = "free.sulfur.dioxide",yData = "total.sulfur.dioxide"),udf_eda_CorrTargetScatter(xData = "free.sulfur.dioxide",yData = "density"))
+
+## Total sulfur dioxide
+udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "total.sulfur.dioxide"),udf_eda_FeatTargetHist(featName = "total.sulfur.dioxide"))
+udf_utils_MultiPlot(udf_eda_CorrTargetScatter(xData = "total.sulfur.dioxide",yData = "alcohol"),udf_eda_CorrTargetScatter(xData = "total.sulfur.dioxide",yData = "density"))
+
+
+## Density
+udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "density"),udf_eda_FeatTargetHist(featName = "density"))
+udf_utils_MultiPlot(udf_eda_CorrTargetScatter(xData = "density",yData = "fixed.acidity"),udf_eda_CorrTargetScatter(xData = "density",yData = "free.sulfur.dioxide"))
+
+## pH
+udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "pH"),udf_eda_FeatTargetHist(featName = "pH"))
+udf_utils_MultiPlot(udf_eda_CorrTargetScatter(xData = "pH",yData = "citric.acid"),udf_eda_CorrTargetScatter(xData = "pH",yData = "residual.sugar"))
+
+
+## Sulphates
+udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "sulphates"),udf_eda_FeatTargetHist(featName = "sulphates"))
+udf_utils_MultiPlot(udf_eda_CorrTargetScatter(xData = "sulphates",yData = "total.sulfur.dioxide"),udf_eda_CorrTargetScatter(xData = "sulphates",yData = "pH"))
+
+
+## Alcohol
+udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "alcohol"),udf_eda_FeatTargetHist(featName = "alcohol"))
+udf_utils_MultiPlot(udf_eda_CorrTargetScatter(xData = "alcohol",yData = "chlorides"),udf_eda_CorrTargetScatter(xData = "alcohol",yData = "free.sulfur.dioxide"))
+
+
+## modelling
+require(glmnet)
+
+## Logistic regression
+lreg_ <- glm(quality ~ .,data = dt_, family = "binomial")
+
+## Step function
+step_ <- stepAIC(lreg_,direction = "both")
+
+preds_ <- ROCR::prediction(predict(step_,dt_[,-ncol(dt_)],type = "response"),dt_$quality)
+
+roc_perf <- ROCR::performance(preds_,measure = "tpr",x.measure = "fpr")
+plot(roc_perf,add = TRUE,colorize =TRUE)
+
+
 
 
