@@ -360,34 +360,62 @@ udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "alcohol"),udf_eda_FeatTarg
 udf_utils_MultiPlot(udf_eda_CorrTargetScatter(xData = "alcohol",yData = "chlorides"),udf_eda_CorrTargetScatter(xData = "alcohol",yData = "free.sulfur.dioxide"))
 
 
-### modelling
-#require(glmnet)
-
-### Logistic regression
-#lreg_ <- glm(quality ~ .,data = dt_, family = "binomial")
-
-### Step function
-#step_ <- stepAIC(lreg_,direction = "both")
-
-#preds_ <- ROCR::prediction(predict(step_,dt_[,-ncol(dt_)],type = "response"),dt_$quality)
-
-#roc_perf <- ROCR::performance(preds_,measure = "tpr",x.measure = "fpr")
-#plot(roc_perf,add = TRUE,colorize =TRUE)
+### MODELLING ###
+#################
 
 
 
-mtx_ <- as.matrix(dt_[, - ncol(dt_)])
+udf.utils.ModelEvaluateHelper <- function(model,testFeatures,testLabels){
+
+    require(ROCR)
+
+    udf.intern.matrix <- function(object){
+        matrix_ <- as.matrix(object)
+        return(matrix_)
+    }
+
+    if(class(testFeatures) != "matrix"){
+        testFeatures <- as.matrix(testFeatures)
+    }
+    if(class(testLabels) != "matrix"){
+        testLabels <- as.matrix(testLabels)
+    }
+
+    if(length(class(model)) == 2 && class(model)[1] == "train" && class(model)[2] == "train.formula"){
+            cPred_ <- predict(model,newdata = testFeatures,class = "class")
+            rPred_ <- predict(model$finalModel,newx = testFeatures,type = "response")
+    } else if (class(model) == "cv.glmnet"){
+        cPred_ <- predict(model,newx = testFeatures,type = "class",s = 'lambda.min')
+        rPred_ <- predict(model,newx = testFeatures,type = "response",s = 'lambda.min')
+    } else {
+             stop("Unsupported model class.")
+    }
+        
+
+        confMatrix_ <- table(cPred_,testLabels)
+
+        rPreds_ <- prediction(rPred_,testLabels)
+        perf_ <- performance(rPreds_,"tpr","fpr")
+        plot_ <- plot(perf_,colorize = FALSE, main = "Reciever Operating Characteristic")
+
+        list.object <- list(pred.labels = cPred_,conf.matrix = confMatrix_, perf.object = perf_)
+
+        return(list.object)
+
+}
+
+
+mtx_ <- as.matrix(dt_[, - ncol(dt_)]) # Cast Matrices
 mty_ <- as.matrix(dt_[,ncol(dt_)])
-mdl.glm <- glmnet(mtx_,mty_, family = "binomial")
+mdl.glm <- glmnet(mtx_,mty_, family = "binomial") # Original Model
 
-plot(mdl.glm, xvar = "dev", label = TRUE)
+plot(mdl.glm, xvar = "dev", label = TRUE) # Plot.
 
-
+######################
 ## Stepwise selection
 
 # define training schema to 10 Fold CV
 swtrc_ <- trainControl(method = "cv", number = 10)
-
 swmdl_ <- train(quality ~ ., data = dt_, trainControl = swtrc_, method = "glmStepAIC", family = "binomial",direction = "forward",trace = 0)
 
 # Check the summary.
@@ -396,16 +424,9 @@ summary(swmdl_)
 # Anova 
 anova(swmdl_$finalModel)
 
-# predict
-#####
-swpreds_ <- predict(swmdl_,newdata = mtx_,class = "class")
-table(swpreds_,mty_)
+swResult_ <- udf.utils.ModelEvaluateHelper(swmdl_,mtx_,mty_)
 
-# ROC
-x_ <- predict(swmdl_$finalModel,newx = mtx_,type = "response")
-pred <- prediction(x_,mty_)
-perf_ <- performance(pred,"tpr","fpr")
-plot(perf_, colorize = FALSE, col = rainbow(10),main = "ROC")
+
 ########
 ## LASSO
 
@@ -417,28 +438,24 @@ predict(fit_,newx= mtx_[1:5,],type = "class",s = c(0.05,0.01))
 lassoFit_ <- cv.glmnet(mtx_, mty_, family = "binomial", alpha = 1, type.measure = "class")
 plot(lassoFit_)
 
-# find the best lambda.
+l0Result_ <- udf.utils.ModelEvaluateHelper(lassoFit_,mtx_,mty_)
 
-bestLambda_ <- lassoFit_$lambda.min
 
-x2_ <- predict(lassoFit_, newx = mtx_, s = 'lambda.min', type = "response")
 
-pred2 <- prediction(x2_,mty_)
-perf2_ <- performance(pred2,"tpr","fpr")
-plot(perf2_)
+
+########
 ## RIDGE
 
 ridgeFit_ <- cv.glmnet(mtx_, mty_, family = "binomial", alpha = 0, type.measure = "class")
 
-# find best lambda.
-b0Lambda_ <- ridgeFit_$lambda.min
-
-x3_ <- predict(ridgeFit_, newx = mtx_[1:10,], s = 'lambda.min', type = "response")
-pred2 <- prediction(x3_,mtyy_)
-perf3_ <- performance(pred2,"tpr","fpr")
-plot(perf3_)
-
-anova(ridgeFit_)
-
 
 plot(ridgeFit_)
+
+l1Result_ <- udf.utils.ModelEvaluateHelper(ridgeFit_,mtx_,mty_)
+
+
+## Elastic net
+# enmdl_ <- train(quality ~ . , data = dt_ , method = "glmnet",family = "binomial")
+# summary(enmdl_)
+# 
+# enreslut <- udf.utils.ModelEvaluateHelper(enmdl_,mtx_,mty_)
