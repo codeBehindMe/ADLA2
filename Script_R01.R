@@ -4,6 +4,8 @@ require(ggplot2)
 require(scales)
 require(reshape2)
 require(corrplot)
+require(glmnet)
+require(caret)
 setwd("C:/Users/aaron/OneDrive/Documents/Monash Data Science/Applied Data Analysis/A2/ADLA2")
 
 
@@ -358,20 +360,70 @@ udf_utils_MultiPlot(udf_eda_FeatTargetBox(featName = "alcohol"),udf_eda_FeatTarg
 udf_utils_MultiPlot(udf_eda_CorrTargetScatter(xData = "alcohol",yData = "chlorides"),udf_eda_CorrTargetScatter(xData = "alcohol",yData = "free.sulfur.dioxide"))
 
 
-## modelling
-require(glmnet)
+### modelling
+#require(glmnet)
 
-## Logistic regression
-lreg_ <- glm(quality ~ .,data = dt_, family = "binomial")
+### Logistic regression
+#lreg_ <- glm(quality ~ .,data = dt_, family = "binomial")
 
-## Step function
-step_ <- stepAIC(lreg_,direction = "both")
+### Step function
+#step_ <- stepAIC(lreg_,direction = "both")
 
-preds_ <- ROCR::prediction(predict(step_,dt_[,-ncol(dt_)],type = "response"),dt_$quality)
+#preds_ <- ROCR::prediction(predict(step_,dt_[,-ncol(dt_)],type = "response"),dt_$quality)
 
-roc_perf <- ROCR::performance(preds_,measure = "tpr",x.measure = "fpr")
-plot(roc_perf,add = TRUE,colorize =TRUE)
+#roc_perf <- ROCR::performance(preds_,measure = "tpr",x.measure = "fpr")
+#plot(roc_perf,add = TRUE,colorize =TRUE)
 
 
+
+mtx_ <- as.matrix(dt_[, - ncol(dt_)])
+mty_ <- as.matrix(dt_[,ncol(dt_)])
+mdl.glm <- glmnet(mtx_,mty_, family = "binomial")
+
+plot(mdl.glm, xvar = "dev", label = TRUE)
+
+
+## Stepwise selection
+
+# define training schema to 10 Fold CV
+swtrc_ <- trainControl(method = "cv", number = 10)
+
+fwdswmdl_ <- train(quality ~ ., data = dt_, trainControl = swtrc_, method = "glmStepAIC", family = "binomial",direction = "forward")
+
+# Check the summary.
+summary(fwdswmdl_)
+
+# Anova 
+anova(fwdswmdl_$finalModel)
+
+x_ <- predict(fwdswmdl_,newdata = mtx_[1:10,],class = "class")
+
+
+## LASSO
+
+fit_ <- glmnet(mtx_, mty_, family = "binomial") # fit non regularised.
+
+predict(fit_,newx= mtx_[1:5,],type = "class",s = c(0.05,0.01))
+
+
+lassoFit_ <- cv.glmnet(mtx_, mty_, family = "binomial", alpha = 1, type.measure = "class")
+plot(lassoFit_)
+
+# find the best lambda.
+
+bestLambda_ <- lassoFit_$lambda.min
+
+predict(lassoFit_, newx = mtx_[1:10,], s = bestLambda_, type = "class")
+
+## RIDGE
+
+ridgeFit_ <- cv.glmnet(mtx_, mty_, family = "binomial", alpha = 0, type.measure = "class")
+
+# find best lambda.
+b0Lambda_ <- ridgeFit_$lambda.min
+
+predict(ridgeFit_, newx = mtx_[1:10,], s = b0Lambda_, type = "class")
+
+anova(ridgeFit_)
 
 
